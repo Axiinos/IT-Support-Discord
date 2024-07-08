@@ -1,0 +1,5 @@
+The Bot stores data for about 5 minutes of the users interaction, then it is deleted.
+
+The data that is stored is the "User ID" of those who make requests, so it can reference them in memory, then wipes them afterwards. See this as a very VERY low cookie auth invalidation, it assures security and privacy above all else.
+
+This Privacy statement can be changed later, incase its needed, or by user requests for certain features. However, it will never have any features that goes against privacy or tracks user usage, and never will.
