@@ -1,0 +1,8 @@
+This is a small step guide how to get the bot running!
+
+1. go to your discord bot webpage, and grab the token from there.
+
+2. open system environment variables and add a new variable name "DISCORD_TOKEN" to the OS environment.
+
+3. paste the discord token into the variable, this way, you keep your system sanitized from exposing your bot token.
+its important not to share sensitive data, especially in code repo's!
