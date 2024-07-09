@@ -11,7 +11,7 @@ class UpdateCommand:
     @classmethod
     def update(cls, command):
         try:
-            reload(command)
+            reload(module=command)
             print(f"{command} was reloaded")
             return str(f"{command} reloaded")
         except NameError as e:

@@ -1,6 +1,6 @@
 import os
-from typing import Optional
-
+from typing import Optional, Any
+import configparser
 import discord
 from discord import app_commands, errors
 
@@ -10,14 +10,41 @@ import application.commands.DevCommands as DevCommands
 import application.commands.BasicCommands as BasicCommands
 
 # Load your bot API Token.
-try:
-    # Attempt to load in Token
-    discordtoken = os.getenv(key="DISCORD_TOKEN")
-except Exception as e:
-    print(f'there was an error attempting to load the token...: {e}')
-    raise Exception
 
-MY_GUILD = discord.Object(id=767084679890206760)
+# Check if 'cfg.ini' exists and contains the 'DISCORD_TOKEN' key
+discordtoken = None
+
+# Check if env.cfg exists
+if os.path.exists('cfg.ini'):
+    config = configparser.ConfigParser()
+    config.read('cfg.ini')
+    if config.has_option('TOKEN', 'DISCORD_TOKEN') and config['TOKEN'].get(
+            'DISCORD_TOKEN') != '"Insert Token Here"':
+        discordtoken = config['TOKEN'].get('DISCORD_TOKEN').strip('"\'')
+
+# If no token in 'cfg.ini', try getting it from the environment
+if discordtoken is None:
+    discordtoken = os.getenv(key='DISCORD_TOKEN')
+
+# If no token provided at all, exit the program
+if discordtoken is None:
+    print('Please Supply Token in either the cfg.ini file, or add it to your OS environment variables.')
+    exit(1)
+
+# Check if 'config.ini' exists and contains the 'ID' key
+if os.path.exists('cfg.ini'):
+    config = configparser.ConfigParser()
+    config.read('cfg.ini')
+    if (config.has_option('GUILD', 'ID') and
+            config['GUILD'].get('ID') != '"Insert Guild ID here, again without quotes."'):
+        idis = config['GUILD'].get('ID')
+
+# Set the ID here
+MY_GUILD = discord.Object(id=int(idis.strip('"\'')))
+# If no guild id in 'config.ini', continue with a printout
+if MY_GUILD is None:
+    print("Couldn't find Guild ID, you can supply it in the cfg.ini file under [GUILD], ID = section.")
+    exit(1)
 
 
 class MyClient(discord.Client):
@@ -54,7 +81,7 @@ async def on_message(message):
 
     if message.content.startswith('$update'):
         usrmsg = message.content
-        command = list(usrmsg.split(" "))
+        command = usrmsg.split()
         DevCommands.UpdateCommand.update(command[1])
         await message.channel.send()
 
@@ -66,14 +93,16 @@ async def hello(interaction: discord.Interaction):
     await interaction.response.send_message(f'Hi, {interaction.user.mention}!')
 
 
-@client.tree.command(name="update")
-@app_commands.rename(message='Enter Module to reload: ')
+@client.tree.command()
+@app_commands.rename(message="text")
 @app_commands.describe(message="Updates Module")
 @app_commands.checks.has_permissions(administrator=True)
-async def update(interation: discord.Interaction.message):
+async def update(interation: discord.Interaction.message, message: str):
     """updates specified message command"""
     try:
-        command = command
+        command: Any = message.split()
+        print(command)
+
         DevCommands.UpdateCommand.update(command)
         await interation.response.send_message(f'Attempted to update {command}')
     except Exception as err:
