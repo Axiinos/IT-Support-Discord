@@ -1,4 +1,5 @@
 const { Events, User} = require('discord.js');
+const console = require("node:console");
 const wait = require('node:timers/promises').setTimeout;
 
 module.exports = {
@@ -15,6 +16,16 @@ module.exports = {
 			return;
 		}
 
+		if (interaction.commandName === 'shutdown' && interaction.user.id === '155360457908027392')
+			await command.execute(interaction);
+
+		if (interaction.commandName === 'shutdown' && interaction.user.id != '155360457908027392') {
+			await interaction.reply({ content: 'You do not have permission to use this command!'});
+			await interaction.followUp({content: 'https://y.yarn.co/5b9900b3-3137-42c1-86ca-052c7092c61a_text.gif'})
+
+		}
+
+
 		if (interaction.commandName === 'support') {
 			try {
 				await interaction.deferReply();
@@ -29,7 +40,7 @@ module.exports = {
 			}
 		}
 
-		if (interaction.commandName != 'support') {
+		if (interaction.commandName != 'support' && interaction.commandName != 'shutdown') {
 			try {
 				console.log(`Command was invoked by ${user} with command ${interaction.commandName}`);
 				await command.execute(interaction);
