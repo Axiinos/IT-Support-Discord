@@ -1,6 +1,8 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { joinVoiceChannel, createAudioResource, createAudioPlayer, NoSubscriberBehavior, StreamType} = require('@discordjs/voice');
-let clientMap;
+const { joinVoiceChannel, EndBehaviorType, VoiceReceiver, entersState, createAudioResource, createAudioPlayer, NoSubscriberBehavior, StreamType,
+    VoiceConnectionStatus
+} = require('@discordjs/voice');
+
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -8,6 +10,7 @@ module.exports = {
         .setDescription('Connect to the server voice chat'),
     async execute(interaction) {
         // start the initialization to connect to specified discord voice chat
+        await interaction.deferReply()
         try{
             const username = interaction.member.user.username;
             const voiceChannel = interaction.member?.voice.channel;
@@ -29,16 +32,30 @@ module.exports = {
 
                     queue.set(interaction.guild.id, queueConstruct);
 
+                    interaction.followUp(`Attemtping to join channel ${username} is in....`)
                     try {
                         const connection = joinVoiceChannel({
                             channelId: voiceChannel.id,
                             guildId: voiceChannel.guild.id,
                             adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-                            selfDeaf: false
+                            selfDeaf: false,
+                            selfMute: false
                         });
 
                         queueConstruct.connection = connection;
-                        interaction.channel.send(`Connecting to channel ${username} is in.`)
+
+                        interaction.followUp(`Connected to ${voiceChannel}`)
+
+                        /**
+                         *
+
+                        try {
+                            await entersState(connection, VoiceConnectionStatus.Ready, 20e3);
+                            const receiver = connection.receiver
+
+                            receiver.speaking.on('start', userId => void)
+                        }
+                            */
                     } catch (err) {
                         console.error(err);
                         queue.delete(interaction.guild.id);
