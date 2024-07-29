@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, Snowflake } = require('discord.js');
+const { SlashCommandBuilder, Snowflake, EmbedBuilder} = require('discord.js');
 const { joinVoiceChannel, VoiceReceiver, entersState, createAudioResource, createAudioPlayer, NoSubscriberBehavior, StreamType,
     VoiceConnectionStatus, EndBehaviorType
 } = require('@discordjs/voice');
@@ -8,7 +8,11 @@ const { Transform, pipeline} = require('stream');
 const prism = require('prism-media');
 const { encodeWav } = require('../../process/converttowave.js')
 const wait = require('node:timers/promises').setTimeout;
-
+const { EventEmitter } = require('events')
+const pyenv = path.join(__dirname, '../../../.venv/Scripts/python.exe', )
+const whisperScriptPath = path.join(__dirname, './whisper_module.py');
+const scriptPath = path.join(__dirname, './response.py');
+const { spawn } = require('child_process')
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -55,30 +59,62 @@ module.exports = {
 
                         try {
                             await entersState(connection, VoiceConnectionStatus.Ready, 20e3);
-                            const receiver = connection.receiver
+                            const receiver = connection.receiver;
+                            const fileReady = new EventEmitter();
+                            const time_to = 500;
 
-                            var timeuser = {};
-                            let time
+                            let listening = true;
 
-                            const time_run = 500;
+                            fileReady.on('isReady', async (filePath, userId) => {
+                                const processVoice = spawn(pyenv, [whisperScriptPath, userId, filePath]);
+                                const processResult = spawn(pyenv, [scriptPath, userId, voiceResult])
+
+                                let voiceResult = '';
+                                let textResult
+
+                                await processVoice.stdout.on('data', function(data){
+                                    voiceResult += data.toString();
+                                    console.log(voiceResult)
+                                })
+
+                                await processResult.stdout.on('data', function(data){
+                                    textResult += data.toString();
+                                    console.log(textResult)
+
+                                    const embed = new EmbedBuilder()
+                                        .setTitle(`Support Request: ${voiceResult} `)
+                                        .setDescription(`${textResult}`)
+                                        .setTimestamp();
+                                    interaction.followUp({embeds: [embed] });
+                                })
+                            })
 
                             receiver.speaking.on('start', (userId) => {
+                                if (!listening) return;
+
                                 console.log('1. Start speaking event triggered');
+
+                                listening = false
+
+                                // populate time with latest date time
+
 
                                 const audioReceiveStream = receiver.subscribe(userId, {
                                     end: {
                                         behavior: EndBehaviorType.AfterSilence,
-                                        duration: time_run,
+                                        duration: time_to,
                                     }
-                                }).on('error', (error) => {
+                                })
+
+                                audioReceiveStream.on('error', (error) => {
                                     console.log("audioReceiveStream error: ", error);
                                 });
-                                //timeuser.add(${userId})
+                                const time = new Date().getTime();
 
-                                time = new Date().getTime();
+                                const audioPath = `./recordings/${userId}_${time}.wav`
 
 
-                                timeuser[userId] = time
+
 
                                 const filename = `./recordings/${userId}_${time}.pcm`;
                                 const out = fs.createWriteStream(filename);
@@ -91,44 +127,35 @@ module.exports = {
                                         //console.log(`Received ${chunk.length} bytes of data.`);
                                         callback(null, chunk);
                                     }
+                                    // logStream end
                                 });
 
-
-
-                                pipeline(audioReceiveStream, opusDecoder, logStream, out, (err) => {
+                                pipeline(audioReceiveStream, opusDecoder, out, (err) => {
                                     if (err) {
                                         console.error('Pipeline failed.', err);
                                     } else {
                                         console.log('Pipeline succeeded.');
                                     }
+                                    // Pipeline End
+                                });
+                                out.on('finish', () => {
+                                    console.log('wrapping pcm to wav')
+                                    const filename = `./recordings/${userId}_${time}.pcm`;
+                                    const pcmData = fs.readFileSync(filename)
 
-
+                                    const wavData = new encodeWav(pcmData, {
+                                        numChannels:2,
+                                        sampleRate: 48000,
+                                        bitDepth: 16
+                                    })
+                                    fs.writeFileSync(`./recordings/${userId}_${time}.wav`, wavData)
+                                    fs.unlinkSync(`./recordings/${userId}_${time}.pcm`)
+                                    listening = true;
                                 });
 
-
-
+                                // receiver.speaking.on end
                             });
 
-                            receiver.speaking.on("end", (userId) => {
-
-                                time = timeuser[userId]
-
-
-
-                                console.log('1. end speaking event triggered');
-
-
-                                const filename = `./recordings/${userId}_${time}.pcm`;
-                                const pcmData = fs.readFileSync(filename)
-
-                                const wavData = new encodeWav(pcmData, {
-                                    numChannels:2,
-                                    sampleRate: 48000,
-                                    bitDepth: 16
-                                })
-                                fs.writeFileSync(`./recordings/${userId}_${time}.wav`, wavData)
-                                fs.unlinkSync(`./recordings/${userId}_${time}.pcm`)
-                            });
                         } catch (e) {
                             console.log('there was an error receiving audio from the connection....');
                         }
