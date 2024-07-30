@@ -33,7 +33,7 @@ module.exports = {
 
             interaction.followUp({embeds: [embed] });
         } );
-        await wait(10000)
+        await wait(2e3)
         await command.on('close', function(code){
             if (code === 0) {
                 console.log('Command executed successfully');

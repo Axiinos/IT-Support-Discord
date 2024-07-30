@@ -98,6 +98,8 @@ module.exports = {
                                         .setTimestamp();
                                     interaction.followUp({embeds: [embed] });
 
+                                    listening = true;
+
                                     processResult.stderr.on('data', function(data){
                                         console.error(`processResult error:\n ${data}`);
                                     })
@@ -174,7 +176,7 @@ module.exports = {
                                     })
                                     fs.writeFileSync(`./recordings/${userId}_${time}.wav`, wavData)
                                     fs.unlinkSync(`./recordings/${userId}_${time}.pcm`)
-                                    listening = true;
+
 
                                     const wavFilePath = `recordings/${userId}_${time}.wav`;
                                     console.log('Emitting isReady signal to event listener fileReady')
