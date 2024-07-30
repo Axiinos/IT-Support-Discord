@@ -2,7 +2,6 @@ import logging
 import os
 import sys
 import asyncio
-
 from openai import AsyncOpenAI
 
 logging.basicConfig(level=logging.INFO)
@@ -13,8 +12,7 @@ client = AsyncOpenAI(
 )
 
 try:
-    userid = sys.argv[1]
-    filePath = sys.argv[2]
+    filePath = sys.argv[1]
 except IndexError:
     print("Error! Data Missing!")
 
@@ -22,24 +20,24 @@ except IndexError:
 async def process_audio_stream(filePath):
 
     logging.info(f"process_audio_stream called filePath: {filePath}")
+
     try:
         # Create a transcription using the client's function
         with open(filePath, "rb") as f:
-            transcription = await client.audio.transcriptions.create(
+            transcriptions = await client.audio.transcriptions.create(
                 model="whisper-1",
                 language="da",
                 file=f,
-                response_format="json"
+                response_format="text"
             )
 
         # Process the streaming response
-        content = transcription.text
-        if content is not None:
-            yield content
-        else:
-            yield "\n"
+        content = transcriptions
+        print(content)
+        return content
 
     except ValueError as e:
-        yield {'error': str(e)}
+        return {'error': str(e)}
 
-asyncio.run(process_audio_stream(userid, filePath))
+
+asyncio.run(process_audio_stream(filePath))

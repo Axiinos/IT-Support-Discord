@@ -13,6 +13,7 @@ const pyenv = path.join(__dirname, '../../../.venv/Scripts/python.exe', )
 const whisperScriptPath = path.join(__dirname, './whisper_module.py');
 const scriptPath = path.join(__dirname, './response.py');
 const { spawn } = require('child_process')
+const console = require("node:console");
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -66,18 +67,28 @@ module.exports = {
                             let listening = true;
 
                             fileReady.on('isReady', async (filePath, userId) => {
-                                const processVoice = spawn(pyenv, [whisperScriptPath, userId, filePath]);
-                                const processResult = spawn(pyenv, [scriptPath, userId, voiceResult])
+                                console.log('initializing Children')
+                                const processVoice = spawn(pyenv, [whisperScriptPath, filePath]);
+
 
                                 let voiceResult = '';
-                                let textResult
+                                let textResult = '';
+
 
                                 await processVoice.stdout.on('data', function(data){
                                     voiceResult += data.toString();
                                     console.log(voiceResult)
                                 })
+                                processVoice.stderr.on('data', function(data){
+                                    console.error(`processVoice error:\n ${data}`);
+                                })
 
-                                await processResult.stdout.on('data', function(data){
+                                processVoice.on("close", function(code) {
+
+                                    console.log(`processVoice exited with code ${code}. attempting to process Results`)
+                                    const processResult = spawn(pyenv, [scriptPath, userId, voiceResult])
+
+                                    processResult.stdout.on('data',function(data){
                                     textResult += data.toString();
                                     console.log(textResult)
 
@@ -86,8 +97,21 @@ module.exports = {
                                         .setDescription(`${textResult}`)
                                         .setTimestamp();
                                     interaction.followUp({embeds: [embed] });
+
+                                    processResult.stderr.on('data', function(data){
+                                        console.error(`processResult error:\n ${data}`);
+                                    })
+                                    processResult.on('close', function(code) {
+                                    if (code === 0) {
+                                        console.log('Command executed successfully');
+                                    } else {
+                                        console.log(`Command exited with code ${code}`);
+                                            }
+                                        })
+                                    })
                                 })
                             })
+
 
                             receiver.speaking.on('start', (userId) => {
                                 if (!listening) return;
@@ -151,6 +175,10 @@ module.exports = {
                                     fs.writeFileSync(`./recordings/${userId}_${time}.wav`, wavData)
                                     fs.unlinkSync(`./recordings/${userId}_${time}.pcm`)
                                     listening = true;
+
+                                    const wavFilePath = `recordings/${userId}_${time}.wav`;
+                                    console.log('Emitting isReady signal to event listener fileReady')
+                                    fileReady.emit('isReady', wavFilePath, userId);
                                 });
 
                                 // receiver.speaking.on end

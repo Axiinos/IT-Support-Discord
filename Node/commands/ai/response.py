@@ -53,6 +53,5 @@ async def process_text(userid, question):
         return f"An error occurred while making the API call: {e}"
 
 
-
 asyncio.run(process_text(userid, message))
 
